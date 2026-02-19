@@ -6,7 +6,6 @@ bool isLatex(std::string toJudge);
 void handler(std::string toJudge);
 std::string math_handler(std::string toJudge);
 std::string replaceAllSymbols(std::string text);
-std::string replaceSymbol(std::string text, size_t pos);
 
 
 int main(int argc, char * argv[]) {
@@ -33,28 +32,21 @@ std::string replaceAllSymbols(std::string text) {
 	size_t i = 0;
 	while (i < text.length()) {
 		if (text[i] == '\\') {
-			std::string replacement = replaceSymbol(text, i);
-			result += replacement;
-			// 跳过已处理的符号
-			if (!replacement.empty()) {
-				// 找到符号结束位置
-				size_t j = i + 1;
-				while (j < text.length() && (isalpha(text[j]) || text[j] == ' ' || 
-				       text[j] == '{' || text[j] == '}' || text[j] == '$' ||
-				       text[j] == '&' || text[j] == '%' || text[j] == '#' ||
-				       text[j] == '_' || text[j] == '^' || text[j] == '~' ||
-				       text[j] == '\\')) {
-					if (text[j] == ' ' || text[j] == '{' || text[j] == '}' ||
-					    text[j] == '$' || text[j] == '&' || text[j] == '%' ||
-					    text[j] == '#' || text[j] == '_' || text[j] == '\\' ||
-					    text[j] == '^' || text[j] == '~') {
-						j++;
+			// 按长度从长到短尝试匹配
+			bool matched = false;
+			for (size_t len = 15; len >= 1; len--) {
+				if (i + len <= text.length()) {
+					std::string candidate = text.substr(i, len);
+					std::string unicode = math_handler(candidate);
+					if (unicode != candidate) {
+						result += unicode;
+						i += len;
+						matched = true;
 						break;
 					}
-					j++;
 				}
-				i = j;
-			} else {
+			}
+			if (!matched) {
 				result += text[i];
 				i++;
 			}
@@ -66,34 +58,7 @@ std::string replaceAllSymbols(std::string text) {
 	return result;
 }
 
-std::string replaceSymbol(std::string text, size_t pos) {
-	if (pos >= text.length() || text[pos] != '\\') return "";
-	
-	// 按长度从长到短尝试匹配
-	for (size_t len = 15; len >= 1; len--) {
-		if (pos + len <= text.length()) {
-			std::string candidate = text.substr(pos, len + 1);
-			std::string unicode = math_handler(candidate);
-			if (unicode != candidate) {
-				return unicode;
-			}
-		}
-	}
-	
-	// 尝试单字符转义
-	if (pos + 1 < text.length()) {
-		std::string candidate = text.substr(pos, 2);
-		std::string unicode = math_handler(candidate);
-		if (unicode != candidate) {
-			return unicode;
-		}
-	}
-	
-	return "";
-}
-
 std::string math_handler(std::string toJudge) {
-	// LaTeX 符号到 Unicode 的映射表
 	static const std::pair<std::string, std::string> symbolMap[] = {
 		// 希腊字母
 		{"\\alpha", "α"}, {"\\beta", "β"}, {"\\gamma", "γ"}, {"\\delta", "δ"},
@@ -162,6 +127,18 @@ std::string math_handler(std::string toJudge) {
 		{"\\backslash", "\\"}, {"\\vert", "|"}, {"\\Vert", "‖"},
 		{"\\$", "$"}, {"\\&", "&"}, {"\\%", "%"}, {"\\#", "#"},
 		{"\\_", "_"}, {"\\textasciitilde", "~"}, {"\\textasciicircum", "^"},
+		// 三角函数
+		{"\\sin", "sin"}, {"\\cos", "cos"}, {"\\tan", "tan"},
+		{"\\cot", "cot"}, {"\\sec", "sec"}, {"\\csc", "csc"},
+		{"\\arcsin", "arcsin"}, {"\\arccos", "arccos"}, {"\\arctan", "arctan"},
+		{"\\arccot", "arccot"}, {"\\arcsec", "arcsec"}, {"\\arccsc", "arccsc"},
+		// 双曲函数
+		{"\\sinh", "sinh"}, {"\\cosh", "cosh"}, {"\\tanh", "tanh"},
+		{"\\coth", "coth"}, {"\\sech", "sech"}, {"\\csch", "csch"},
+		// 对数和指数函数
+		{"\\ln", "ln"}, {"\\lg", "lg"}, {"\\log", "log"}, {"\\exp", "exp"},
+		// 极限
+		{"\\lim", "lim"}, {"\\max", "max"}, {"\\min", "min"},
 	};
 
 	//find symbol
